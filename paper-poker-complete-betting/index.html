@@ -1,0 +1,1580 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Paper Poker — Multiplayer Betting Companion</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<!-- PeerJS for zero-config WebRTC peer-to-peer multiplayer -->
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+
+<style>
+:root {
+  --bg-deep: #050d0a;
+  --bg-card: #091a13;
+  --felt-green: #0e5a3c;
+  --felt-glow: #167a53;
+  --felt-dark: #073824;
+  --wood-rim: #422514;
+  --wood-border: #63371d;
+  --gold-primary: #f5c85a;
+  --gold-glow: rgba(245, 200, 90, 0.4);
+  --gold-dark: #b8861e;
+  --red-accent: #b43d48;
+  --red-dark: #7a1d26;
+  --green-btn: #1b8a5a;
+  --text-main: #f0f7f3;
+  --text-muted: #8faea0;
+  --text-dim: #5c796d;
+  --c1: #e9ecef;
+  --c5: #f4c430;
+  --c10: #e63946;
+  --c25: #2a9d8f;
+  --c50: #9b5de5;
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+body {
+  margin: 0;
+  padding: 0;
+  background: radial-gradient(circle at 50% -10%, #153b2d 0%, var(--bg-deep) 75%);
+  color: var(--text-main);
+  font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* TOP NAVIGATION */
+.top {
+  height: 64px;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(5, 13, 10, 0.85);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+.brand {
+  font-size: 20px;
+  font-weight: 900;
+  letter-spacing: -0.5px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.brand .spade {
+  color: var(--gold-primary);
+  filter: drop-shadow(0 0 8px var(--gold-glow));
+  font-size: 24px;
+}
+.room-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 6px 12px;
+  border-radius: 99px;
+  font-size: 13px;
+}
+.room-badge strong {
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--gold-primary);
+  letter-spacing: 1.5px;
+  font-weight: 700;
+}
+.btn-icon {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+.btn-icon:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+.btn-icon svg { width: 16px; height: 16px; }
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981;
+  display: inline-block;
+}
+.status-dot.connecting { background: #f59e0b; box-shadow: 0 0 8px #f59e0b; }
+.status-dot.error { background: #ef4444; box-shadow: 0 0 8px #ef4444; }
+
+/* CONTAINER */
+.wrap {
+  max-width: 1240px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 16px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* LOBBY / SETUP SCREEN */
+.setup-card {
+  max-width: 580px;
+  width: 100%;
+  margin: 40px auto;
+  background: linear-gradient(180deg, #0e271d 0%, #071710 100%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 28px;
+  padding: 34px 28px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  text-align: center;
+}
+.setup-card h1 {
+  margin: 0 0 8px;
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+.setup-card .sub {
+  color: var(--text-muted);
+  font-size: 14px;
+  margin-bottom: 26px;
+  line-height: 1.5;
+}
+.badge-tag {
+  display: inline-block;
+  background: rgba(245, 200, 90, 0.12);
+  color: var(--gold-primary);
+  border: 1px solid rgba(245, 200, 90, 0.25);
+  padding: 4px 12px;
+  border-radius: 99px;
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 18px;
+}
+
+.input-group {
+  margin-bottom: 16px;
+  text-align: left;
+}
+.input-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 6px;
+}
+.input-field {
+  width: 100%;
+  background: #040e0a;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 14px 16px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.input-field:focus {
+  border-color: var(--gold-primary);
+  box-shadow: 0 0 0 3px rgba(245, 200, 90, 0.2);
+}
+
+.lobby-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 22px 0;
+  color: var(--text-dim);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.lobby-divider::before, .lobby-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* BUTTONS */
+.btn {
+  border: none;
+  border-radius: 12px;
+  padding: 14px 20px;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+  text-decoration: none;
+}
+.btn:active { transform: scale(0.97); }
+.btn-gold {
+  background: linear-gradient(135deg, #ffe082 0%, #d4a02a 100%);
+  color: #0b1c14;
+  box-shadow: 0 8px 24px rgba(212, 160, 42, 0.3);
+}
+.btn-gold:hover {
+  background: linear-gradient(135deg, #ffea9f 0%, #e2ad35 100%);
+  box-shadow: 0 10px 30px rgba(212, 160, 42, 0.45);
+}
+.btn-green {
+  background: linear-gradient(135deg, #22c55e 0%, #15803d 100%);
+  color: #fff;
+  box-shadow: 0 8px 24px rgba(34, 197, 94, 0.25);
+}
+.btn-green:hover { filter: brightness(1.1); }
+.btn-red {
+  background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
+  color: #fff;
+  box-shadow: 0 8px 24px rgba(239, 68, 68, 0.25);
+}
+.btn-red:hover { filter: brightness(1.1); }
+.btn-dark {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+.btn-dark:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+.btn-full { width: 100%; }
+
+/* GAME TABLE */
+.table-wrapper {
+  position: relative;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.table-surface {
+  position: relative;
+  width: 100%;
+  height: 640px;
+  background: radial-gradient(ellipse at 50% 50%, var(--felt-glow) 0%, var(--felt-green) 50%, var(--felt-dark) 100%);
+  border: 18px solid var(--wood-border);
+  border-radius: 120px;
+  box-shadow:
+    inset 0 0 0 6px var(--wood-rim),
+    inset 0 0 60px rgba(0, 0, 0, 0.8),
+    0 25px 70px rgba(0, 0, 0, 0.7);
+  overflow: hidden;
+}
+.table-surface::after {
+  content: "";
+  position: absolute;
+  inset: 20px;
+  border: 2px dashed rgba(255, 255, 255, 0.12);
+  border-radius: 96px;
+  pointer-events: none;
+}
+
+/* CENTER POT & TABLE INFO */
+.center-felt {
+  position: absolute;
+  left: 50%;
+  top: 48%;
+  transform: translate(-50%, -50%);
+  width: 280px;
+  text-align: center;
+  z-index: 10;
+  pointer-events: none;
+}
+.pot-label {
+  font-size: 11px;
+  letter-spacing: 3px;
+  font-weight: 800;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+.pot-amount {
+  font-size: 54px;
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 0 4px 20px rgba(0, 0, 0, 0.7), 0 0 30px rgba(245, 200, 90, 0.3);
+  font-family: 'JetBrains Mono', monospace;
+  line-height: 1.1;
+  margin: 4px 0;
+}
+.bet-line {
+  font-size: 13px;
+  font-weight: 600;
+  color: #c9e2d6;
+  background: rgba(0, 0, 0, 0.3);
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 99px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.turn-pill {
+  margin-top: 8px;
+  display: inline-block;
+  background: rgba(14, 39, 29, 0.95);
+  border: 1px solid rgba(245, 200, 90, 0.4);
+  color: var(--gold-primary);
+  font-size: 12px;
+  font-weight: 800;
+  padding: 6px 14px;
+  border-radius: 99px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+/* SEATS */
+.seats-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: auto;
+}
+.seat {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 140px;
+  text-align: center;
+  z-index: 20;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.avatar-wrap {
+  position: relative;
+  width: 62px;
+  height: 62px;
+  margin: 0 auto;
+}
+.avatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #244b3c 0%, #10241c 100%);
+  border: 3px solid rgba(255, 255, 255, 0.2);
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+  font-weight: 900;
+  color: #fff;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+  transition: all 0.3s;
+}
+.seat.is-turn .avatar {
+  border-color: var(--gold-primary);
+  box-shadow: 0 0 0 4px rgba(245, 200, 90, 0.25), 0 0 35px var(--gold-primary);
+  animation: pulse-turn 1.8s infinite;
+}
+@keyframes pulse-turn {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+.seat.is-you .avatar {
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.3), 0 8px 24px rgba(0, 0, 0, 0.6);
+}
+.seat.is-folded {
+  opacity: 0.45;
+  filter: grayscale(0.8);
+}
+
+.you-tag {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  background: #2563eb;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 99px;
+  letter-spacing: 0.5px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+.host-crown {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 15px;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.8));
+}
+.kick-btn {
+  position: absolute;
+  bottom: -4px;
+  right: -6px;
+  background: #dc2626;
+  color: #fff;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid #fff;
+  font-size: 11px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.player-name {
+  font-size: 13px;
+  font-weight: 800;
+  margin-top: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.8);
+}
+.player-stack {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gold-primary);
+  font-family: 'JetBrains Mono', monospace;
+}
+.player-sub {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+.status-pill-folded {
+  color: #f87171;
+  font-weight: 800;
+  font-size: 10px;
+  letter-spacing: 1px;
+}
+.status-pill-boot {
+  color: #34d399;
+  font-weight: 800;
+  font-size: 10px;
+}
+
+/* MINI CHIPS */
+.mini-chips-row {
+  display: flex;
+  justify-content: center;
+  gap: 2px;
+  margin-top: 4px;
+}
+.chip-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1.5px dashed rgba(0, 0, 0, 0.5);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+.chip-dot.c1 { background: var(--c1); }
+.chip-dot.c5 { background: var(--c5); }
+.chip-dot.c10 { background: var(--c10); }
+.chip-dot.c25 { background: var(--c25); }
+.chip-dot.c50 { background: var(--c50); }
+
+/* CONTROLS AREA */
+.controls-card {
+  max-width: 820px;
+  width: 100%;
+  margin: 14px auto 0;
+  background: rgba(10, 28, 20, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+  padding: 16px 20px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5);
+}
+.actions-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+}
+.actions-row > * {
+  flex: 1;
+  min-width: 120px;
+}
+
+.raise-control-box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 4px;
+  border-radius: 12px;
+}
+.raise-control-box input {
+  width: 80px;
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 16px;
+  font-weight: 700;
+  text-align: center;
+  outline: none;
+}
+.chip-quick-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-main);
+  border-radius: 8px;
+  padding: 6px 9px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.chip-quick-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: var(--gold-primary);
+}
+
+.log-banner {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+  margin-top: 10px;
+  min-height: 20px;
+  line-height: 1.4;
+}
+
+/* FOOTER RULES / INFO */
+.footer-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  max-width: 820px;
+  margin: 10px auto 0;
+  color: var(--text-dim);
+  font-size: 12px;
+  flex-wrap: wrap;
+}
+.rules-text {
+  flex: 1;
+  min-width: 250px;
+  line-height: 1.4;
+}
+
+/* MODAL OVERLAY */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 16px;
+}
+.modal-box {
+  background: #0d251b;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 24px;
+  padding: 28px;
+  max-width: 450px;
+  width: 100%;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8);
+  text-align: center;
+}
+.modal-box h3 { margin: 0 0 10px; font-size: 22px; }
+.modal-box p { color: var(--text-muted); font-size: 14px; margin-bottom: 20px; }
+.winner-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+/* TOAST NOTIFICATION */
+.toast-container {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(14, 39, 29, 0.95);
+  border: 1px solid var(--gold-primary);
+  color: #fff;
+  padding: 12px 22px;
+  border-radius: 99px;
+  font-size: 14px;
+  font-weight: 700;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s, transform 0.3s;
+}
+.toast-container.show {
+  opacity: 1;
+  transform: translate(-50%, -10px);
+}
+
+.hidden { display: none !important; }
+
+/* RESPONSIVE DESIGN */
+@media (max-width: 768px) {
+  .wrap { padding: 8px; }
+  .table-surface {
+    height: 520px;
+    border-width: 12px;
+    border-radius: 60px;
+  }
+  .table-surface::after {
+    inset: 12px;
+    border-radius: 48px;
+  }
+  .seat { width: 100px; }
+  .avatar-wrap { width: 48px; height: 48px; }
+  .avatar { font-size: 18px; }
+  .player-name { font-size: 11px; }
+  .player-stack { font-size: 11px; }
+  .pot-amount { font-size: 38px; }
+  .center-felt { width: 200px; }
+  .actions-row > * { flex-basis: calc(50% - 6px); }
+  .setup-card { padding: 24px 18px; margin: 20px auto; }
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">
+    <span class="spade">♠</span>
+    <span>Paper Poker</span>
+  </div>
+  <div class="room-badge" id="roomBadge">
+    <span class="status-dot" id="connDot" title="Connection status"></span>
+    <span style="color:var(--text-muted)">ROOM:</span>
+    <strong id="roomDisplay">—</strong>
+    <button class="btn-icon" onclick="copyInviteLink()" title="Copy Shareable Invite Link" id="copyBtn">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+    </button>
+  </div>
+</header>
+
+<main class="wrap">
+  <!-- LOBBY SCREEN -->
+  <section id="lobby" class="setup-card">
+    <div class="badge-tag">₹200 Stack · ₹1 Separate Boot · 2–7 Players</div>
+    <h1>Join or Host a Table</h1>
+    <p class="sub">Play paper poker with your friends! Use this companion to track chips, ₹1 boots, raises, and pots in real-time across your phones or laptops.</p>
+
+    <div class="input-group">
+      <label class="input-label" for="playerNameInput">Your Name</label>
+      <input id="playerNameInput" class="input-field" maxlength="14" placeholder="e.g. Aryan, Rohan, Alex">
+    </div>
+
+    <div style="display:flex; gap:12px; margin-top:20px;">
+      <button class="btn btn-gold btn-full" onclick="createRoom()">
+        <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
+        Create New Table (Host)
+      </button>
+    </div>
+
+    <div class="lobby-divider">Or join with room code</div>
+
+    <div class="input-group">
+      <label class="input-label" for="roomCodeInput">Room Code</label>
+      <input id="roomCodeInput" class="input-field" maxlength="8" placeholder="e.g. A7K9M" style="text-transform:uppercase; letter-spacing:2px; font-family:'JetBrains Mono', monospace;">
+    </div>
+
+    <button class="btn btn-dark btn-full" onclick="joinRoom()">
+      <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path></svg>
+      Join Table
+    </button>
+  </section>
+
+  <!-- GAME SCREEN -->
+  <section id="game" class="hidden">
+    <div class="table-wrapper">
+      <div class="table-surface">
+        <div class="seats-layer" id="seatsLayer"></div>
+
+        <div class="center-felt">
+          <div class="pot-label">Table Pot</div>
+          <div class="pot-amount" id="potDisplay">₹0</div>
+          <div class="bet-line" id="betlineDisplay">Current Bet: ₹0</div>
+          <div><div class="turn-pill" id="turnDisplay">Waiting for players</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONTROLS -->
+    <div class="controls-card">
+      <div class="actions-row" id="actionsBox"></div>
+      <div class="log-banner" id="logBanner"></div>
+    </div>
+
+    <!-- FOOTER HELPER -->
+    <div class="footer-bar">
+      <div class="rules-text">
+        <strong>Paper Poker Rules:</strong> ₹1 separate boot collected every hand. Initial stack ₹210 (10×₹1, 10×₹5, 5×₹10, 2×₹25, 1×₹50). Chips can be exchanged automatically for change.
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button class="btn btn-dark" style="padding:8px 14px; font-size:12px;" onclick="copyInviteLink()">
+          🔗 Share Room Link
+        </button>
+        <button class="btn btn-dark" id="addBotBtn" style="padding:8px 14px; font-size:12px;" onclick="addBotPlayer()">
+          + Add Test Bot
+        </button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- SHOWDOWN MODAL -->
+<div id="showdownModal" class="modal-overlay hidden">
+  <div class="modal-box">
+    <h3>🏆 Declare Hand Winner</h3>
+    <p>Select which player won the cards showdown to award them the entire table pot.</p>
+    <div class="winner-buttons" id="winnerButtonsList"></div>
+    <button class="btn btn-dark btn-full" onclick="closeShowdownModal()">Cancel</button>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast" class="toast-container">
+  <span id="toastText">Link copied to clipboard!</span>
+</div>
+
+<script>
+// ==========================================
+// CONSTANTS & GAME CONFIG
+// ==========================================
+// Initial stack breakdown: 10x₹1, 10x₹5, 5x₹10, 2x₹25, 1x₹50 = ₹210 total
+const START_CHIPS = { 1: 10, 5: 10, 10: 5, 25: 2, 50: 1 };
+const DENOMS = [1, 5, 10, 25, 50];
+const PEER_PREFIX = 'paperpoker-v3-';
+
+// Game State
+let room = '';
+let isHost = false;
+let myId = '';
+let myName = '';
+let hostPeer = null;
+let clientPeer = null;
+let hostConn = null;
+let clientConns = {}; // For host: peerId -> conn
+let localMode = false;
+
+let players = []; // [{ id, name, chips: {...}, boot: 0, contrib: 0, folded: false, isHost: false, connected: true, isBot: false }]
+let pot = 0;
+let currentBet = 0;
+let turn = 0;
+let started = false;
+let logMessage = 'Welcome to Paper Poker! Waiting for players to join.';
+
+// ==========================================
+// AUDIO SYNTHESIS (Zero External Asset Dependencies)
+// ==========================================
+let audioCtx = null;
+function playSound(type) {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const t = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    if (type === 'chip') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(800, t);
+      osc.frequency.exponentialRampToValueAtTime(300, t + 0.08);
+      gain.gain.setValueAtTime(0.3, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+      osc.start(t);
+      osc.stop(t + 0.08);
+    } else if (type === 'turn') {
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(587.33, t);
+      osc.frequency.setValueAtTime(880, t + 0.1);
+      gain.gain.setValueAtTime(0.2, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
+      osc.start(t);
+      osc.stop(t + 0.28);
+    } else if (type === 'win') {
+      [523.25, 659.25, 783.99, 1046.5].forEach((freq, idx) => {
+        const o = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        o.type = 'triangle';
+        o.frequency.setValueAtTime(freq, t + idx * 0.09);
+        g.gain.setValueAtTime(0.2, t + idx * 0.09);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.45 + idx * 0.09);
+        o.connect(g);
+        g.connect(audioCtx.destination);
+        o.start(t + idx * 0.09);
+        o.stop(t + 0.45 + idx * 0.09);
+      });
+    } else if (type === 'pack') {
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(260, t);
+      osc.frequency.exponentialRampToValueAtTime(80, t + 0.15);
+      gain.gain.setValueAtTime(0.2, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+      osc.start(t);
+      osc.stop(t + 0.15);
+    }
+  } catch (e) {}
+}
+
+// ==========================================
+// HELPERS & CHIP MATH
+// ==========================================
+const $ = id => document.getElementById(id);
+const totalChips = p => Object.entries(p.chips).reduce((sum, [val, cnt]) => sum + Number(val) * cnt, 0);
+const avatarLetter = name => (name || '?')[0].toUpperCase();
+
+function showToast(text) {
+  const toast = $('toast');
+  $('toastText').textContent = text;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 3000);
+}
+
+// Break down higher chips into smaller chips if needed
+function makeExactChange(chips, neededVal) {
+  if (chips[neededVal] > 0) return true;
+  const higher = [50, 25, 10, 5].filter(v => v > neededVal && chips[v] > 0);
+  if (higher.length === 0) return false;
+  const breakVal = higher[higher.length - 1]; // smallest available higher chip
+  chips[breakVal]--;
+  let remaining = breakVal;
+  while (remaining > 0) {
+    if (remaining >= neededVal) {
+      chips[neededVal]++;
+      remaining -= neededVal;
+    } else {
+      for (const d of [25, 10, 5, 1]) {
+        if (remaining >= d) {
+          chips[d]++;
+          remaining -= d;
+          break;
+        }
+      }
+    }
+  }
+  return true;
+}
+
+// Deduct amount with auto-change
+function deductChips(p, amount) {
+  if (amount <= 0) return true;
+  if (totalChips(p) < amount) return false;
+
+  // Greedy check first
+  let left = amount;
+  let tempChips = { ...p.chips };
+  for (const v of [50, 25, 10, 5, 1]) {
+    let k = Math.min(tempChips[v], Math.floor(left / v));
+    tempChips[v] -= k;
+    left -= k * v;
+  }
+  if (left === 0) {
+    p.chips = tempChips;
+    return true;
+  }
+
+  // If greedy fails, make change
+  while (left > 0) {
+    for (const v of [50, 25, 10, 5]) {
+      if (p.chips[v] > 0 && makeExactChange(p.chips, 1)) break;
+    }
+    // try deducting 1s
+    if (p.chips[1] > 0) {
+      const take = Math.min(p.chips[1], left);
+      p.chips[1] -= take;
+      left -= take;
+    } else {
+      break;
+    }
+  }
+  return left === 0;
+}
+
+function depositPot(winner, amount) {
+  let left = amount;
+  for (const v of [50, 25, 10, 5, 1]) {
+    const k = Math.floor(left / v);
+    winner.chips[v] += k;
+    left -= k * v;
+  }
+}
+
+// ==========================================
+// NETWORKING: HOST & CLIENT P2P
+// ==========================================
+function generateRoomCode() {
+  const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+  let res = '';
+  for (let i = 0; i < 5; i++) res += chars[Math.floor(Math.random() * chars.length)];
+  return res;
+}
+
+function initHostPeer() {
+  const peerId = PEER_PREFIX + room.toLowerCase();
+  hostPeer = new Peer(peerId, {
+    debug: 1,
+    config: {
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:global.stun.twilio.com:3478' }
+      ]
+    }
+  });
+
+  hostPeer.on('open', id => {
+    updateConnStatus('connected');
+    logMessage = `Room ${room} is open! Share the link or room code with friends to join.`;
+    render();
+  });
+
+  hostPeer.on('connection', conn => {
+    conn.on('open', () => {
+      // client connected
+    });
+    conn.on('data', data => {
+      handleHostMessage(conn, data);
+    });
+    conn.on('close', () => {
+      handlePeerDisconnect(conn.peer);
+    });
+  });
+
+  hostPeer.on('error', err => {
+    console.error('Host peer error:', err);
+    if (err.type === 'unavailable-id') {
+      alert(`Room code ${room} is already active or recently used. Creating a new unique room code.`);
+      room = generateRoomCode();
+      $('roomDisplay').textContent = room;
+      initHostPeer();
+    } else {
+      updateConnStatus('error');
+    }
+  });
+}
+
+function handleHostMessage(conn, msg) {
+  if (!msg || !msg.type) return;
+
+  if (msg.type === 'JOIN') {
+    clientConns[conn.peer] = conn;
+    const existing = players.find(p => p.id === msg.peerId);
+    if (existing) {
+      existing.connected = true;
+      existing.name = msg.name || existing.name;
+    } else {
+      if (players.length >= 7) {
+        conn.send({ type: 'ERROR', message: 'Table is full (maximum 7 players).' });
+        return;
+      }
+      players.push({
+        id: msg.peerId,
+        name: msg.name || `Player ${players.length + 1}`,
+        chips: { ...START_CHIPS },
+        boot: 0,
+        contrib: 0,
+        folded: false,
+        isHost: false,
+        connected: true,
+        isBot: false
+      });
+      logMessage = `${msg.name} joined the table! (${players.length}/7 players)`;
+      playSound('turn');
+    }
+    broadcastState();
+  } else if (msg.type === 'ACTION') {
+    executeAction(msg.action, msg.val, msg.senderId);
+  }
+}
+
+function handlePeerDisconnect(peerId) {
+  const p = players.find(x => x.id === peerId);
+  if (p) {
+    p.connected = false;
+    logMessage = `${p.name} disconnected.`;
+    broadcastState();
+  }
+}
+
+function initClientPeer(targetRoom) {
+  clientPeer = new Peer({
+    debug: 1,
+    config: {
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:global.stun.twilio.com:3478' }
+      ]
+    }
+  });
+
+  clientPeer.on('open', id => {
+    myId = id;
+    const targetPeerId = PEER_PREFIX + targetRoom.toLowerCase();
+    hostConn = clientPeer.connect(targetPeerId, { reliable: true });
+
+    hostConn.on('open', () => {
+      updateConnStatus('connected');
+      hostConn.send({ type: 'JOIN', name: myName, peerId: myId });
+    });
+
+    hostConn.on('data', data => {
+      handleClientMessage(data);
+    });
+
+    hostConn.on('close', () => {
+      updateConnStatus('error');
+      logMessage = 'Lost connection to host. Reconnecting...';
+      render();
+    });
+  });
+
+  clientPeer.on('error', err => {
+    console.error('Client peer error:', err);
+    updateConnStatus('error');
+    alert('Could not connect to room ' + targetRoom + '. Please check the code and ensure host is online.');
+  });
+}
+
+function handleClientMessage(msg) {
+  if (!msg || !msg.type) return;
+  if (msg.type === 'SYNC') {
+    const s = msg.state;
+    players = s.players;
+    pot = s.pot;
+    currentBet = s.currentBet;
+    turn = s.turn;
+    started = s.started;
+    logMessage = s.logMessage;
+    if (msg.sound) playSound(msg.sound);
+    render();
+  } else if (msg.type === 'ERROR') {
+    alert(msg.message);
+  }
+}
+
+function broadcastState(sound = null) {
+  if (!isHost) return;
+  const statePayload = {
+    type: 'SYNC',
+    sound,
+    state: {
+      room,
+      players,
+      pot,
+      currentBet,
+      turn,
+      started,
+      logMessage
+    }
+  };
+  for (const [pId, conn] of Object.entries(clientConns)) {
+    if (conn && conn.open) {
+      conn.send(statePayload);
+    }
+  }
+  if (sound) playSound(sound);
+  render();
+}
+
+function updateConnStatus(status) {
+  const dot = $('connDot');
+  dot.className = 'status-dot ' + (status === 'connected' ? '' : status);
+}
+
+// ==========================================
+// GAMEPLAY LOGIC & ACTIONS
+// ==========================================
+function createRoom() {
+  myName = $('playerNameInput').value.trim() || 'Host';
+  room = generateRoomCode();
+  isHost = true;
+  myId = 'host-' + Math.random().toString(36).slice(2, 7);
+
+  players = [{
+    id: myId,
+    name: myName,
+    chips: { ...START_CHIPS },
+    boot: 0,
+    contrib: 0,
+    folded: false,
+    isHost: true,
+    connected: true,
+    isBot: false
+  }];
+
+  enterGameUI();
+  initHostPeer();
+}
+
+function joinRoom() {
+  myName = $('playerNameInput').value.trim() || 'Player';
+  const code = $('roomCodeInput').value.trim().toUpperCase();
+  if (!code) return alert('Please enter a room code.');
+  room = code;
+  isHost = false;
+
+  enterGameUI();
+  initClientPeer(room);
+}
+
+function enterGameUI() {
+  $('lobby').classList.add('hidden');
+  $('game').classList.remove('hidden');
+  $('roomDisplay').textContent = room;
+  render();
+}
+
+// Boot & Start Hand
+function bootAndStart() {
+  if (!isHost) {
+    sendActionToHost('boot_start');
+    return;
+  }
+  if (players.length < 2) {
+    return alert('At least 2 players are needed to boot and start the round! Invite friends or click "+ Add Test Bot".');
+  }
+
+  // Check chips and collect ₹1 boot from all players
+  for (const p of players) {
+    if (p.chips[1] < 1) {
+      // automatically break a higher chip to get ₹1s
+      makeExactChange(p.chips, 1);
+    }
+    if (p.chips[1] < 1) {
+      return alert(`${p.name} does not have enough balance to pay the ₹1 boot.`);
+    }
+  }
+
+  // Reset round state
+  pot = 0;
+  currentBet = 0;
+  turn = 0;
+  players.forEach(p => {
+    p.chips[1]--;
+    p.boot = 1;
+    p.contrib = 0;
+    p.folded = false;
+    pot++;
+  });
+
+  started = true;
+  logMessage = `₹1 boot collected from all ${players.length} players (Pot: ₹${pot}). Betting starts at ₹0.`;
+  broadcastState('chip');
+
+  // Trigger bot if it's bot's turn
+  checkBotTurn();
+}
+
+function callAction() {
+  sendOrExecute('call');
+}
+
+function raiseAction(customAmount) {
+  const extra = customAmount || Number($('raiseAmountInput').value);
+  if (!extra || extra < 1) return alert('Enter a valid raise amount (minimum ₹1).');
+  sendOrExecute('raise', extra);
+}
+
+function packAction() {
+  sendOrExecute('pack');
+}
+
+function sendOrExecute(action, val = 0) {
+  if (isHost) {
+    executeAction(action, val, myId);
+  } else {
+    sendActionToHost(action, val);
+  }
+}
+
+function sendActionToHost(action, val = 0) {
+  if (hostConn && hostConn.open) {
+    hostConn.send({ type: 'ACTION', action, val, senderId: myId });
+  } else {
+    alert('Connecting to host... please wait.');
+  }
+}
+
+function executeAction(action, val, senderId) {
+  if (!isHost) return;
+
+  if (action === 'boot_start') {
+    bootAndStart();
+    return;
+  }
+
+  if (!started) return;
+
+  const currentP = players[turn];
+  // Verify sender is the player whose turn it is
+  if (currentP.id !== senderId && !currentP.isBot) {
+    return; // Ignore unauthorized action
+  }
+
+  if (action === 'call') {
+    const need = currentBet - currentP.contrib;
+    if (need <= 0) {
+      logMessage = `${currentP.name} checked.`;
+      playSound('chip');
+      advanceTurn();
+      return;
+    }
+    if (!deductChips(currentP, need)) {
+      if (currentP.id === myId) alert(`Not enough chips to call ₹${need}.`);
+      return;
+    }
+    currentP.contrib += need;
+    pot += need;
+    logMessage = `${currentP.name} called ₹${need}.`;
+    broadcastState('chip');
+    advanceTurn();
+  } else if (action === 'raise') {
+    const extra = Number(val);
+    const newBet = Math.max(currentBet + extra, currentBet + 1);
+    const pay = newBet - currentP.contrib;
+    if (!deductChips(currentP, pay)) {
+      if (currentP.id === myId) alert(`Not enough chips to raise to ₹${newBet}.`);
+      return;
+    }
+    currentP.contrib = newBet;
+    currentBet = newBet;
+    pot += pay;
+    logMessage = `${currentP.name} raised to ₹${newBet}!`;
+    broadcastState('chip');
+    advanceTurn();
+  } else if (action === 'pack') {
+    currentP.folded = true;
+    logMessage = `${currentP.name} packed (folded).`;
+    broadcastState('pack');
+    advanceTurn();
+  }
+}
+
+function advanceTurn() {
+  const alive = players.filter(p => !p.folded);
+  if (alive.length === 1) {
+    awardPotToWinner(alive[0]);
+    return;
+  }
+
+  // Find next player whose contribution < currentBet
+  let nextTurn = -1;
+  for (let k = 1; k <= players.length; k++) {
+    const idx = (turn + k) % players.length;
+    if (!players[idx].folded && players[idx].contrib < currentBet) {
+      nextTurn = idx;
+      break;
+    }
+  }
+
+  if (nextTurn === -1) {
+    // All active players matched currentBet!
+    logMessage = `All active players matched ₹${currentBet}! Betting street complete.`;
+    players.forEach(p => { if (!p.folded) p.contrib = 0; });
+    currentBet = 0;
+    nextTurn = players.findIndex(p => !p.folded);
+  }
+
+  turn = nextTurn;
+  broadcastState('turn');
+  checkBotTurn();
+}
+
+function checkBotTurn() {
+  if (!isHost || !started) return;
+  const currentP = players[turn];
+  if (currentP && currentP.isBot && !currentP.folded) {
+    setTimeout(() => {
+      if (!started || turn >= players.length || players[turn].id !== currentP.id) return;
+      const need = currentBet - currentP.contrib;
+      // Simple friendly poker bot AI
+      const rand = Math.random();
+      if (need === 0) {
+        if (rand < 0.25) executeAction('raise', 5, currentP.id);
+        else executeAction('call', 0, currentP.id);
+      } else {
+        if (need > 30 && rand < 0.3) executeAction('pack', 0, currentP.id);
+        else if (rand < 0.2) executeAction('raise', 5, currentP.id);
+        else executeAction('call', 0, currentP.id);
+      }
+    }, 1200);
+  }
+}
+
+function awardPotToWinner(winner) {
+  const winAmount = pot;
+  depositPot(winner, winAmount);
+  pot = 0;
+  started = false;
+  currentBet = 0;
+  players.forEach(p => { p.boot = 0; p.contrib = 0; p.folded = false; });
+  logMessage = `🏆 ${winner.name} won the hand! ₹${winAmount} pot was deposited to their balance.`;
+  broadcastState('win');
+}
+
+function resetGame() {
+  if (!isHost) return;
+  players.forEach(p => {
+    p.chips = { ...START_CHIPS };
+    p.boot = 0;
+    p.contrib = 0;
+    p.folded = false;
+  });
+  pot = 0;
+  currentBet = 0;
+  started = false;
+  turn = 0;
+  logMessage = 'Table reset. All chip stacks replenished to ₹210.';
+  broadcastState();
+}
+
+// Showdown Modal (Host can award pot to any remaining player)
+function openShowdownModal() {
+  const modal = $('showdownModal');
+  const list = $('winnerButtonsList');
+  const activePlayers = players.filter(p => !p.folded);
+  list.innerHTML = activePlayers.map(p => `
+    <button class="btn btn-gold btn-full" style="justify-content:space-between;" onclick="selectShowdownWinner('${p.id}')">
+      <span>${p.name}</span>
+      <span style="font-family:'JetBrains Mono'">Stack: ₹${totalChips(p)}</span>
+    </button>
+  `).join('');
+  modal.classList.remove('hidden');
+}
+
+function closeShowdownModal() {
+  $('showdownModal').classList.add('hidden');
+}
+
+function selectShowdownWinner(winnerId) {
+  closeShowdownModal();
+  const winner = players.find(p => p.id === winnerId);
+  if (winner) awardPotToWinner(winner);
+}
+
+// Host feature: Boot / Kick a player from table
+function kickPlayer(idx) {
+  if (!isHost || started) return;
+  if (confirm(`Remove ${players[idx].name} from the table?`)) {
+    const removed = players.splice(idx, 1)[0];
+    logMessage = `${removed.name} was removed from the table.`;
+    broadcastState();
+  }
+}
+
+// Host feature: Add Bot for testing
+const BOT_NAMES = ['Bot Kabir', 'Bot Ananya', 'Bot Rahul', 'Bot Vikram', 'Bot Priya'];
+function addBotPlayer() {
+  if (!isHost) return alert('Only the room host can add bots.');
+  if (players.length >= 7) return alert('Table is full (maximum 7 players).');
+  const availableNames = BOT_NAMES.filter(n => !players.some(p => p.name === n));
+  const botName = availableNames[0] || `Bot ${players.length + 1}`;
+  players.push({
+    id: 'bot-' + Math.random().toString(36).slice(2, 7),
+    name: botName,
+    chips: { ...START_CHIPS },
+    boot: 0,
+    contrib: 0,
+    folded: false,
+    isHost: false,
+    connected: true,
+    isBot: true
+  });
+  logMessage = `${botName} added to the table! (${players.length}/7 players)`;
+  broadcastState();
+}
+
+// Quick raise helper
+function setRaiseDelta(delta) {
+  const input = $('raiseAmountInput');
+  if (input) input.value = delta;
+}
+
+// ==========================================
+// RENDER UI & SEATS
+// ==========================================
+function render() {
+  $('potDisplay').textContent = '₹' + pot;
+  $('betlineDisplay').textContent = `Current Bet: ₹${currentBet}`;
+
+  if (started) {
+    const cur = players[turn];
+    $('turnDisplay').textContent = cur ? `Turn: ${cur.name}` : 'Betting round';
+  } else {
+    $('turnDisplay').textContent = `${players.length} Players · Ready to Boot`;
+  }
+
+  $('logBanner').innerHTML = logMessage;
+
+  // Render Seats in a circle/ellipse
+  const N = players.length;
+  // Position local player at bottom center
+  const myIndex = players.findIndex(p => p.id === myId);
+  const baseOffset = myIndex >= 0 ? myIndex : 0;
+
+  $('seatsLayer').innerHTML = players.map((p, i) => {
+    // Relative angular positioning
+    const rel = (i - baseOffset + N) % N;
+    // Angle: rel=0 is bottom (PI/2), moving clockwise
+    const angle = (Math.PI / 2) + (rel * (2 * Math.PI / N));
+    // Ellipse radius percentages
+    const rx = 38;
+    const ry = 36;
+    const posX = (50 + rx * Math.cos(angle)).toFixed(1);
+    const posY = (48 + ry * Math.sin(angle)).toFixed(1);
+
+    const isCurrentTurn = started && i === turn && !p.folded;
+    const isYou = p.id === myId;
+
+    return `
+      <div class="seat ${isCurrentTurn ? 'is-turn' : ''} ${isYou ? 'is-you' : ''} ${p.folded ? 'is-folded' : ''}"
+           style="left: ${posX}%; top: ${posY}%;">
+        <div class="avatar-wrap">
+          ${p.isHost ? '<span class="host-crown" title="Host">👑</span>' : ''}
+          ${isYou ? '<span class="you-tag">YOU</span>' : ''}
+          ${isHost && !started && !isYou ? `<button class="kick-btn" onclick="kickPlayer(${i})" title="Remove player">✕</button>` : ''}
+          <div class="avatar">${avatarLetter(p.name)}</div>
+        </div>
+        <div class="player-name">${p.name}</div>
+        <div class="player-stack">₹${totalChips(p)}</div>
+        <div class="player-sub">
+          Bet ₹${p.contrib} · Boot ₹${p.boot}
+        </div>
+        <div>
+          ${p.folded ? '<span class="status-pill-folded">PACKED</span>' : '<span class="status-pill-boot">ACTIVE</span>'}
+        </div>
+        <div class="mini-chips-row">
+          ${DENOMS.flatMap(v => Array(Math.min(4, p.chips[v] || 0)).fill(`<span class="chip-dot c${v}" title="₹${v}"></span>`)).join('')}
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // Render Action Controls
+  renderControls();
+}
+
+function renderControls() {
+  const box = $('actionsBox');
+  if (!started) {
+    if (isHost) {
+      box.innerHTML = `
+        <button class="btn btn-gold btn-full" onclick="bootAndStart()">
+          <span style="font-size:18px">💰</span> BOOT (₹1) & START ROUND
+        </button>
+        <button class="btn btn-dark" onclick="resetGame()">
+          Reset Chips (₹210)
+        </button>
+      `;
+    } else {
+      box.innerHTML = `
+        <div style="text-align:center; color:var(--text-muted); font-size:14px; width:100%; padding:8px;">
+          ⏳ Waiting for Host (${players.find(p=>p.isHost)?.name || 'Host'}) to collect ₹1 boot and start round...
+        </div>
+      `;
+    }
+    return;
+  }
+
+  // Round is started
+  const curPlayer = players[turn];
+  const isMyTurn = curPlayer && curPlayer.id === myId;
+  const need = Math.max(0, currentBet - (curPlayer ? curPlayer.contrib : 0));
+
+  if (isMyTurn) {
+    box.innerHTML = `
+      <button class="btn btn-green" onclick="callAction()">
+        ${need > 0 ? `CALL ₹${need}` : 'CHECK'}
+      </button>
+      <button class="btn btn-red" onclick="packAction()">
+        PACK (FOLD)
+      </button>
+
+      <div class="raise-control-box">
+        <input id="raiseAmountInput" type="number" min="1" value="5" placeholder="₹" style="width:55px;">
+        <button class="chip-quick-btn" onclick="setRaiseDelta(1)">+₹1</button>
+        <button class="chip-quick-btn" onclick="setRaiseDelta(5)">+₹5</button>
+        <button class="chip-quick-btn" onclick="setRaiseDelta(10)">+₹10</button>
+        <button class="chip-quick-btn" onclick="setRaiseDelta(25)">+₹25</button>
+      </div>
+
+      <button class="btn btn-gold" onclick="raiseAction()">
+        RAISE
+      </button>
+    `;
+  } else {
+    // Not my turn
+    let hostExtra = '';
+    if (isHost) {
+      hostExtra = `
+        <button class="btn btn-dark" style="font-size:13px; padding:10px 14px;" onclick="openShowdownModal()">
+          🏆 Award Pot (Showdown)
+        </button>
+      `;
+    }
+    box.innerHTML = `
+      <div style="text-align:center; color:var(--text-muted); font-size:14px; width:100%; display:flex; align-items:center; justify-content:center; gap:12px; flex-wrap:wrap;">
+        <span>⏳ Waiting for <strong>${curPlayer ? curPlayer.name : 'player'}</strong> to act (Current Bet: ₹${currentBet})...</span>
+        ${hostExtra}
+      </div>
+    `;
+  }
+}
+
+// ==========================================
+// INVITE LINK & URL HANDLING
+// ==========================================
+function copyInviteLink() {
+  const url = `${window.location.origin}${window.location.pathname}?room=${room}`;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(() => {
+      showToast('Invite link copied! Send it to your friends.');
+    }).catch(() => fallbackCopy(url));
+  } else {
+    fallbackCopy(url);
+  }
+}
+
+function fallbackCopy(text) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  document.body.appendChild(ta);
+  ta.select();
+  document.execCommand('copy');
+  document.body.removeChild(ta);
+  showToast('Invite link copied! Send it to your friends.');
+}
+
+// On Page Load: Check URL parameters
+window.addEventListener('DOMContentLoaded', () => {
+  const params = new URLSearchParams(window.location.search);
+  const roomParam = params.get('room');
+  if (roomParam) {
+    $('roomCodeInput').value = roomParam.trim().toUpperCase();
+    $('playerNameInput').focus();
+    showToast(`Joining Room ${roomParam.toUpperCase()}. Enter your name!`);
+  }
+});
+</script>
+</body>
+</html>

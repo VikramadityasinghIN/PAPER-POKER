@@ -1,0 +1,13 @@
+{
+  "name": "paper-poker-betting",
+  "version": "1.0.0",
+  "description": "Real-time multiplayer betting and chip companion for Paper Poker",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx serve .",
+    "dev": "npx serve ."
+  },
+  "keywords": ["poker", "paper-poker", "betting", "multiplayer", "webrtc"],
+  "author": "",
+  "license": "MIT"
+}
